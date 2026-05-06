@@ -24,6 +24,15 @@
         class="mb-2"
       />
 
+      <!-- 실행 Job - 수정 시 변경 불가 -->
+      <v-text-field
+        v-model="form.jobBeanName"
+        label="실행 Job"
+        density="compact"
+        readonly
+        class="mb-2"
+      />
+
       <!-- Cron 입력 방식 선택 -->
       <div class="mb-2">
         <v-label>Cron 입력 방식</v-label>
@@ -45,12 +54,15 @@
       <!-- 선택 입력 -->
       <CronSelector v-else v-model="form.cronExpression" class="mb-2" />
 
+      <!-- 학기 - snapshot Job일 때만 표시 -->
       <v-text-field
+        v-if="isSnapshotJob"
         v-model="form.semester"
         label="학기"
         density="compact"
         class="mb-2"
       />
+
       <v-text-field v-model="form.description" label="설명" density="compact" />
     </div>
 
@@ -65,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue"; // ← computed 추가
 import CronSelector from "@/components/quartz/CronSelector.vue";
 
 const props = defineProps({
@@ -85,7 +97,13 @@ const form = ref({
   cronExpression: "",
   semester: "",
   description: "",
+  jobBeanName: "", // ← 추가
 });
+
+// snapshot Job일 때만 학기 필드 표시
+const isSnapshotJob = computed(() =>
+  form.value.jobBeanName?.toLowerCase().includes("snapshot"),
+);
 
 watch(
   () => props.modelValue,
@@ -94,7 +112,7 @@ watch(
     if (val && props.job) {
       errorMsg.value = "";
       cronMode.value = "manual";
-      form.value = { ...props.job };
+      form.value = { ...props.job }; // ← jobBeanName도 같이 복사됨
     }
   },
 );
@@ -109,7 +127,14 @@ const close = () => {
 
 const submit = () => {
   errorMsg.value = "";
+
+  if (!form.value.cronExpression) {
+    errorMsg.value = "Cron 표현식을 입력해주세요.";
+    return;
+  }
+
   emit("saved", { ...form.value });
+  close();
 };
 
 const showError = (msg) => {
